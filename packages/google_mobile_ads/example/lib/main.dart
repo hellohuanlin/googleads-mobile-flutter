@@ -26,6 +26,7 @@ import 'inline_adaptive_example.dart';
 import 'native_template_example.dart';
 import 'reusable_inline_example.dart';
 import 'webview_example.dart';
+import 'package:collection/collection.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -53,10 +54,7 @@ class PlatformViewAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-    _banners = [
-      _createBannerAd(),
-      _createBannerAd(),
-      _createBannerAd(),
+    // _banners = [
       // _createBannerAd(),
       // _createBannerAd(),
       // _createBannerAd(),
@@ -64,10 +62,13 @@ class PlatformViewAppState extends State<MyApp> {
       // _createBannerAd(),
       // _createBannerAd(),
       // _createBannerAd(),
-    ];
+      // _createBannerAd(),
+      // _createBannerAd(),
+      // _createBannerAd(),
+    // ];
   }
 
-    BannerAd _createBannerAd() {
+  BannerAd _createBannerAd() {
     // Test IDs from Admob:
     // https://developers.google.com/admob/ios/test-ads
     // https://developers.google.com/admob/android/test-ads
@@ -84,17 +85,28 @@ class PlatformViewAppState extends State<MyApp> {
   }
 
   AdWidget _getBannerWidget(int index) {
-    print('trying to reuse banner for index: $index');
-    BannerAd bannerAd = _banners[index % _banners.length];
-    print('got banner from list with banner id: ${bannerAd.adId()}');
-    if (bannerAd.isAdMounted()) {
-      bannerAd = _createBannerAd();
-      print('ad banner already mounted, create a new ad banner with banner id: ${bannerAd.adId()}');
+    BannerAd? bannerAd = _banners.firstWhereOrNull((banner) => banner.isReadyForReuse());
+    if (bannerAd != null) {
+      print('found a reusable banner ad');
     } else {
-      print('ad not mounted, safe to reuse');
+      print('create a new banner ad');
+      bannerAd = _createBannerAd();
+      bannerAd.load();
+      _banners.add(bannerAd);
     }
-    bannerAd.load();
     return AdWidget(ad: bannerAd);
+
+    // print('trying to reuse banner for index: $index');
+    // BannerAd bannerAd = _banners[index % _banners.length];
+    // print('got banner from list with banner id: ${bannerAd.adId()}');
+    // if (bannerAd.isReadyForReuse()) {
+    //   print('ad not mounted, safe to reuse');
+    // } else {
+    //   bannerAd = _createBannerAd();
+    //   print('ad banner already mounted, create a new ad banner with banner id: ${bannerAd.adId()}');
+    // }
+    // bannerAd.load();
+    // return AdWidget(ad: bannerAd);
   }
 
   @override

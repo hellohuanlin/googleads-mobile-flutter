@@ -905,17 +905,26 @@ class BannerAd extends AdWithView {
   }
 
   bool isAdLoadedCalled() {
-    final int? adId = instanceManager.adIdFor(this);
-    return adId != null;
+    return adId() != null;
   }
-  bool isAdMounted() {
-    final int? adId = instanceManager.adIdFor(this);
+
+  bool isReadyForReuse() {
     // already loaded ad
-    if (adId != null) {
-      return instanceManager.isWidgetAdIdMounted(adId);
+    final int? id = adId();
+
+    if (id != null) {
+      return !instanceManager.isWidgetAdIdMounted(id);
     }
+    // not loaded ad
     return false;
   }
+  // bool isAdMounted() {
+  //   // already loaded ad
+  //   if (adId() != null) {
+  //     return instanceManager.isWidgetAdIdMounted(adId);
+  //   }
+  //   return false;
+  // }
 }
 
 /// An 'AdManagerBannerAd' that has fluid ad size.
