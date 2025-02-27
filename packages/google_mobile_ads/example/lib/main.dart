@@ -85,7 +85,7 @@ class PlatformViewAppState extends State<MyApp> {
   }
 
   AdWidget _getBannerWidget() {
-    BannerAd? bannerAd = _banners.firstWhereOrNull((banner) => banner.isReadyForReuse());
+    BannerAd? bannerAd = _banners.firstWhereOrNull((banner) => !banner.isMounted);
     if (bannerAd != null) {
       print('found a reusable banner ad');
     } else {
