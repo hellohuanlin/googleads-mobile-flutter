@@ -81,6 +81,7 @@ class PlatformViewAppState extends State<MyApp> {
       size: AdSize.banner,
       listener: const BannerAdListener(),
     );
+    bannerAd.load();
     return bannerAd;
   }
 
@@ -91,7 +92,6 @@ class PlatformViewAppState extends State<MyApp> {
     } else {
       print('create a new banner ad');
       bannerAd = _createBannerAd();
-      bannerAd!.load();
 
       _banners.add(bannerAd!);
     }
