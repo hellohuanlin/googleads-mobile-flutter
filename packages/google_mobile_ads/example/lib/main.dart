@@ -40,74 +40,55 @@ const String testDevice = 'YOUR_DEVICE_ID';
 const int maxFailedLoadAttempts = 3;
 
 class MyApp extends StatefulWidget {
-  // @override
-  // _MyAppState createState() => _MyAppState();
-
   @override
-  PlatformViewAppState createState() => PlatformViewAppState();
+  _MultipleBannersState createState() => _MultipleBannersState();
 }
 
-class PlatformViewAppState extends State<MyApp> {
-
+class _MultipleBannersState extends State<MyApp> {
   List<BannerAd> _banners = [];
+  Map<BannerAd, AdSize> _bannerSizes = {};
 
-  @override
-  void initState() {
-    super.initState();
-    // _banners = [
-      // _createBannerAd(),
-      // _createBannerAd(),
-      // _createBannerAd(),
-      // _createBannerAd(),
-      // _createBannerAd(),
-      // _createBannerAd(),
-      // _createBannerAd(),
-      // _createBannerAd(),
-      // _createBannerAd(),
-      // _createBannerAd(),
-    // ];
-  }
+  static const _insets = 16.0;
+  double get _adWidth => MediaQuery.of(context).size.width - (2 * _insets);
 
   BannerAd _createBannerAd() {
+    // TODO: replace this test ad unit with your own ad unit.
     // Test IDs from Admob:
     // https://developers.google.com/admob/ios/test-ads
     // https://developers.google.com/admob/android/test-ads
     final String bannerId = Platform.isAndroid
         ? 'ca-app-pub-3940256099942544/6300978111'
         : 'ca-app-pub-3940256099942544/2934735716';
+
+    // Get an inline adaptive size for the current orientation.
+    AdSize adSize = AdSize.getCurrentOrientationInlineAdaptiveBannerAdSize(_adWidth.truncate());
+
     final BannerAd bannerAd = BannerAd(
       adUnitId: bannerId,
       request: const AdRequest(),
-      size: AdSize.banner,
-      listener: const BannerAdListener(),
+      size: adSize,
+      listener: BannerAdListener(onAdLoaded: (Ad ad) async {
+        BannerAd bannerAd = (ad as BannerAd);
+        final AdSize? adSize = await bannerAd.getPlatformAdSize();
+        if (adSize != null) {
+          _bannerSizes[bannerAd] = adSize;
+        }
+      }),
     );
     bannerAd.load();
     return bannerAd;
   }
 
-  AdWidget _getBannerWidget() {
+  BannerAd _getRecyclableBannerAd() {
     BannerAd? bannerAd = _banners.firstWhereOrNull((banner) => !banner.isMounted);
     if (bannerAd != null) {
-      print('found a reusable banner ad');
+      // Found a reusable banner.
     } else {
-      print('create a new banner ad');
+      // Create a banner and cache it.
       bannerAd = _createBannerAd();
-
       _banners.add(bannerAd!);
     }
-    return AdWidget(ad: bannerAd!);
-
-    // print('trying to reuse banner for index: $index');
-    // BannerAd bannerAd = _banners[index % _banners.length];
-    // print('got banner from list with banner id: ${bannerAd.adId()}');
-    // if (bannerAd.isReadyForReuse()) {
-    //   print('ad not mounted, safe to reuse');
-    // } else {
-    //   bannerAd = _createBannerAd();
-    //   print('ad banner already mounted, create a new ad banner with banner id: ${bannerAd.adId()}');
-    // }
-    // bannerAd.load();
-    // return AdWidget(ad: bannerAd);
+    return bannerAd!;
   }
 
   @override
@@ -116,29 +97,26 @@ class PlatformViewAppState extends State<MyApp> {
       theme: ThemeData.light(),
       title: 'Advanced Layout',
       home: Scaffold(
-        appBar: AppBar(title: const Text('Platform View Ad Banners')),
+        appBar: AppBar(title: const Text('Multiple Ad Banners Example')),
         body: ListView.builder(
-          key: const Key('platform-views-scroll'), // This key is used by the driver test.
           itemCount: 250,
           itemBuilder: (BuildContext context, int index) {
-            if (index == 0) {
-              return const SizedBox(height: 1500, child: ColoredBox(color: Colors.yellow));
+            if (index.isEven) {
+              return const SizedBox(height: 500, child: ColoredBox(color: Colors.yellow));
+            } else {
+              BannerAd bannerAd = _getRecyclableBannerAd();
+              final AdSize? adSize = _bannerSizes[bannerAd];
+              return SizedBox(
+                width: (adSize?.width ?? 320).toDouble(), 
+                height: (adSize?.height ?? 50).toDouble(), 
+                child: AdWidget(ad: bannerAd));
             }
-
-            return index.isEven
-            // Use 320x50 Admob standard banner size.
-                ? const SizedBox(height: 150, child: ColoredBox(color: Colors.yellow))
-                : SizedBox(width: 320, height: 50, child: _getBannerWidget());
-            // Adjust the height to control number of platform views on screen.
-            // TODO(hellohuanlin): Having more than 5 banners on screen causes an unknown crash.
-            // See: https://github.com/flutter/flutter/issues/144339
           },
         ),
       ),
     );
   }
 }
-
 
 class _MyAppState extends State<MyApp> {
   static final AdRequest request = AdRequest(
