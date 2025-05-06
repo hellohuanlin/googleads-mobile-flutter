@@ -46,7 +46,9 @@ class MyApp extends StatefulWidget {
 
 class _MultipleBannersState extends State<MyApp> {
   List<BannerAd> _banners = [];
+  static const _cacheSize = 5;
   Map<BannerAd, AdSize> _bannerSizes = {};
+  Map<BannerAd, int> _previousBannerPositions = {};
 
   static const _insets = 16.0;
   double get _adWidth => MediaQuery.of(context).size.width - (2 * _insets);
@@ -70,8 +72,11 @@ class _MultipleBannersState extends State<MyApp> {
       listener: BannerAdListener(onAdLoaded: (Ad ad) async {
         BannerAd bannerAd = (ad as BannerAd);
         final AdSize? adSize = await bannerAd.getPlatformAdSize();
-        if (adSize != null) {
+        if (adSize != null && adSize != _bannerSizes[bannerAd]) {
           _bannerSizes[bannerAd] = adSize;
+          setState(() {
+            _bannerSizes[bannerAd] = adSize;
+          });
         }
       }),
     );
@@ -79,16 +84,25 @@ class _MultipleBannersState extends State<MyApp> {
     return bannerAd;
   }
 
-  BannerAd _getRecyclableBannerAd() {
-    BannerAd? bannerAd = _banners.firstWhereOrNull((banner) => !banner.isMounted);
-    if (bannerAd != null) {
-      // Found a reusable banner.
-    } else {
-      // Create a banner and cache it.
-      bannerAd = _createBannerAd();
-      _banners.add(bannerAd!);
+  BannerAd _getRecyclableBannerAd(int bannerPosition) {
+    BannerAd? banner = _banners.firstWhereOrNull((banner) => _previousBannerPositions[banner] == bannerPosition);
+    if (banner != null) {
+      return banner;
     }
-    return bannerAd!;
+    if (_banners.length < _cacheSize) {
+      BannerAd banner = _createBannerAd();
+      _banners.add(banner);
+      _previousBannerPositions[banner] = bannerPosition;
+      return banner;
+    } else {
+      BannerAd banner = _banners[bannerPosition % _cacheSize];
+      if (banner.isMounted) {
+        return _createBannerAd();
+      } else { 
+        _previousBannerPositions[banner] = bannerPosition;
+        return banner;
+      }
+    }
   }
 
   @override
@@ -97,19 +111,25 @@ class _MultipleBannersState extends State<MyApp> {
       theme: ThemeData.light(),
       title: 'Advanced Layout',
       home: Scaffold(
-        appBar: AppBar(title: const Text('Multiple Ad Banners Example')),
+        appBar: AppBar(title: const Text('Adaptive Recycle Example')),
         body: ListView.builder(
           itemCount: 250,
           itemBuilder: (BuildContext context, int index) {
-            if (index.isEven) {
-              return const SizedBox(height: 500, child: ColoredBox(color: Colors.yellow));
-            } else {
-              BannerAd bannerAd = _getRecyclableBannerAd();
+            // one ad every x rows
+            if (index % 3 == 0) {
+              int bannerPosition = index ~/ 3;
+              BannerAd bannerAd = _getRecyclableBannerAd(bannerPosition);
               final AdSize? adSize = _bannerSizes[bannerAd];
-              return SizedBox(
-                width: (adSize?.width ?? 320).toDouble(), 
-                height: (adSize?.height ?? 50).toDouble(), 
-                child: AdWidget(ad: bannerAd));
+              if (adSize != null) {
+                return SizedBox(
+                  width: adSize.width.toDouble(), 
+                  height: adSize.height.toDouble(), 
+                  child: AdWidget(ad: bannerAd));
+              } else {
+                return const SizedBox(height: 50, child: Text("Loading ads"));
+              }
+            } else {
+              return const SizedBox(height: 100, child: ColoredBox(color: Colors.yellow));
             }
           },
         ),
